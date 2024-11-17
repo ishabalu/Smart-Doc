@@ -13,7 +13,7 @@ def redact_sensitive_info(text):
         "SSN": r"\b\d{3}-\d{2}-\d{4}\b",
         "Bank Account": r"\b\d{8,12}\b",
         "Phone Number": r"\b\d{3}[-.\s]??\d{3}[-.\s]??\d{4}\b",
-        "Credit Card": r"\b(?:\d[ -]*?){13,16}\b",
+        "Credit Card": r"\b(?:\d{4}[ -]?){3}\d{4}\b",  
         "Email": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
     }
 

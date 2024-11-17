@@ -24,21 +24,28 @@ def extract_text_from_docx(file):
     return "\n".join(paragraphs)
 
 def extract_text_from_excel(file):
-    """Extract text from an Excel file."""
+    """Extract and format data from an Excel file."""
     try:
-        # Load the Excel file into a DataFrame
+        # Load and preprocess the data
         df = pd.read_excel(file)
+        
+        # Drop rows with all missing values and duplicates
+        df = df.dropna(how='all').drop_duplicates()
 
-        # Convert the DataFrame to a single string
-        text = ""
-        for col in df.columns:
-            text += f"Column: {col}\n"  # Include column headers
-            text += "\n".join(df[col].dropna().astype(str))  # Include all non-NaN values in the column
-            text += "\n\n"  # Add spacing between columns
+        # Convert numeric columns dynamically
+        df = df.apply(pd.to_numeric, errors='ignore')  # Convert numeric where possible
 
-        return text.strip()  # Return the combined text
+        # Format the data into the desired row-column structure
+        formatted_text = ""
+        for i, row in df.iterrows():
+            formatted_text += f"Row {i + 1}:\n"
+            for col in df.columns:
+                formatted_text += f"{col}: {row[col]}\n"
+            formatted_text += "\n"  # Add spacing between rows
+
+        return formatted_text.strip()
     except Exception as e:
-        raise ValueError(f"Failed to extract text from the Excel file. Error: {e}")
+        raise ValueError(f"Error processing Excel file: {e}")
 
 def extract_text(file, file_type):
     """Extract text based on file type."""
