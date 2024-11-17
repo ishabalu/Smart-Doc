@@ -2,13 +2,54 @@ import re
 import streamlit as st
 from text_extraction import extract_text_from_pdf
 from text_summarization import summarize_long_text_cohere
-from qa_system import answer_question_with_cohere  # Updated import
+from qa_system import answer_question_with_cohere
+from textblob import TextBlob
+import plotly.graph_objects as go
 
+# Helper Functions
 def preprocess_text(raw_text):
     """Clean and preprocess extracted text."""
     cleaned_text = re.sub(r'\s+', ' ', raw_text)
     cleaned_text = re.sub(r'Page \d+ of \d+', '', cleaned_text)
     return cleaned_text.strip()
+
+def analyze_sentiment(text):
+    """Analyze sentiment and return polarity and tone."""
+    analysis = TextBlob(text)
+    polarity = analysis.sentiment.polarity
+    if polarity > 0.1:
+        tone = "Positive"
+    elif polarity < -0.1:
+        tone = "Negative"
+    else:
+        tone = "Neutral"
+    return polarity, tone
+
+def create_gauge(polarity, tone):
+    """Create a smaller speedometer-like gauge."""
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=polarity,
+        gauge={
+            'axis': {'range': [-1, 1]},
+            'bar': {'color': "black"},
+            'steps': [
+                {'range': [-1, -0.1], 'color': "red"},
+                {'range': [-0.1, 0.1], 'color': "yellow"},
+                {'range': [0.1, 1], 'color': "green"}
+            ],
+        },
+        title={'text': f"Tone: {tone}"}
+    ))
+
+    # Adjust layout for a smaller size
+    fig.update_layout(
+        width=280,  # Set the width of the figure
+        height=280,  # Set the height of the figure
+        margin=dict(t=10, b=10, l=10, r=10)  # Reduce margins for compactness
+    )
+
+    return fig
 
 # Custom Styles
 st.markdown(
@@ -87,11 +128,15 @@ uploaded_file = st.file_uploader(
     label_visibility="visible"
 )
 
+# Initialize Session State
 if "preprocessed_text" not in st.session_state:
     st.session_state["preprocessed_text"] = None
 
 if "summary" not in st.session_state:
     st.session_state["summary"] = None
+
+if "sentiment" not in st.session_state:
+    st.session_state["sentiment"] = None
 
 if "qa_history" not in st.session_state:
     st.session_state["qa_history"] = []
@@ -116,8 +161,22 @@ if uploaded_file is not None:
     with st.expander("📜 View Extracted Text"):
         st.write(st.session_state["preprocessed_text"])
 
+    # Sentiment Analysis Section
+    if st.session_state["sentiment"] is None:
+        with st.spinner("🧠 Analyzing sentiment... Hang tight!"):
+            polarity, tone = analyze_sentiment(st.session_state["preprocessed_text"])
+            st.session_state["sentiment"] = (polarity, tone)
+
+    st.subheader("🔍 Sentiment Analysis and Tone Detection")
+    polarity, tone = st.session_state["sentiment"]
+    st.write(f"**Tone:** {tone}")
+
+    # Display Sentiment Gauge
+    fig = create_gauge(polarity, tone)
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Summarization Section
     if st.session_state["summary"] is None:
-        # Summarization Section
         with st.spinner("🧠 Summarizing... Hang tight!"):
             st.session_state["summary"] = summarize_long_text_cohere(st.session_state["preprocessed_text"])
 
