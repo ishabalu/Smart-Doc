@@ -6,11 +6,21 @@ from qa_system import answer_question_with_cohere  # Updated import
 
 def preprocess_text(raw_text):
     """
-    Clean and preprocess extracted text.
+    Clean and preprocess extracted text from any document type.
     """
-    cleaned_text = re.sub(r'\s+', ' ', raw_text)  # Replace multiple spaces with a single space
-    cleaned_text = re.sub(r'Page \d+ of \d+', '', cleaned_text)  # Remove page numbers
-    return cleaned_text.strip()
+    # Remove multiple spaces, newlines, and tabs
+    cleaned_text = re.sub(r'\s+', ' ', raw_text)  
+    
+    # Remove common document artifacts (e.g., "Page X of Y")
+    cleaned_text = re.sub(r'Page \d+ of \d+', '', cleaned_text)  
+    
+    # Strip leading and trailing whitespace
+    cleaned_text = cleaned_text.strip()
+    
+    # Remove extra artifacts specific to DOCX (if observed, customize as needed)
+    cleaned_text = re.sub(r'\x0c', '', cleaned_text)  # Form feed characters
+    return cleaned_text
+
 
 
 def main():

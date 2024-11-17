@@ -1,17 +1,60 @@
 import re
 import streamlit as st
-from text_extraction import extract_text_from_pdf
 from text_summarization import summarize_long_text_cohere
 from qa_system import answer_question_with_cohere
 from textblob import TextBlob
 import plotly.graph_objects as go
+from text_extraction import extract_text_from_pdf, extract_text_from_txt, extract_text_from_docx
+
+
+def redact_sensitive_info(text):
+    """Redact sensitive information from the text."""
+    patterns = {
+        "SSN": r"\b\d{3}-\d{2}-\d{4}\b",
+        "Bank Account": r"\b\d{8,12}\b",
+        "Phone Number": r"\b\d{3}[-.\s]??\d{3}[-.\s]??\d{4}\b",
+        "Credit Card": r"\b(?:\d[ -]*?){13,16}\b",
+        "Email": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+    }
+
+    for label, pattern in patterns.items():
+        text = re.sub(pattern, f"[REDACTED {label}]", text)
+    
+    return text
+
+def extract_text(file, file_extension):
+    """Extract text based on the file type."""
+    # Mapping file extensions to corresponding extraction functions
+    extractors = {
+        "pdf": extract_text_from_pdf,
+        "txt": extract_text_from_txt,
+        "docx": extract_text_from_docx
+    }
+
+    if file_extension not in extractors:
+        raise ValueError(f"Unsupported file type: {file_extension}")
+
+    # Call the appropriate extraction function
+    return extractors[file_extension](file)
 
 # Helper Functions
 def preprocess_text(raw_text):
-    """Clean and preprocess extracted text."""
+    """
+    Clean, preprocess, and redact sensitive information from extracted text.
+    """
+    if not raw_text:
+        raise ValueError("No text to preprocess.")
+    
+    # Remove multiple spaces and page numbers
     cleaned_text = re.sub(r'\s+', ' ', raw_text)
     cleaned_text = re.sub(r'Page \d+ of \d+', '', cleaned_text)
+    
+    # Redact sensitive information
+    cleaned_text = redact_sensitive_info(cleaned_text)
+    
     return cleaned_text.strip()
+
+
 
 def analyze_sentiment(text):
     """Analyze sentiment and return polarity and tone."""
@@ -24,6 +67,12 @@ def analyze_sentiment(text):
     else:
         tone = "Neutral"
     return polarity, tone
+
+def filter_sensitive_responses(response):
+    """
+    Redact sensitive information from the generated answer.
+    """
+    return redact_sensitive_info(response)
 
 def create_gauge(polarity, tone):
     """Create a smaller speedometer-like gauge."""
@@ -113,7 +162,7 @@ st.markdown(
     """
     <div class="steps">
     <strong>Steps to Use:</strong> <br><br>
-    <span class="highlight">1.</span> Upload a PDF document using the uploader below.<br>
+    <span class="highlight">1.</span> Upload a document using the uploader below.<br>
     <span class="highlight">2.</span> View the extracted text or summary in the respective sections.<br>
     <span class="highlight">3.</span> Type a question to interact with the Q&A system.
     </div>
@@ -124,7 +173,7 @@ st.markdown(
 # File Upload Section
 uploaded_file = st.file_uploader(
     label="",
-    type="pdf",
+    type=["pdf", "txt", "docx"],
     label_visibility="visible"
 )
 
@@ -147,33 +196,57 @@ if "current_question" not in st.session_state:
 if "current_answer" not in st.session_state:
     st.session_state["current_answer"] = None
 
-# Process Uploaded File
 if uploaded_file is not None:
+    file_extension = uploaded_file.name.split('.')[-1].lower()  # Get the file extension
     st.info(f"**Uploaded File:** {uploaded_file.name} ({uploaded_file.size} bytes)")
 
     if st.session_state["preprocessed_text"] is None:
-        # Extract and Preprocess Text
-        with st.spinner("🔍 Extracting text... Please wait."):
-            raw_text = extract_text_from_pdf(uploaded_file)
-            st.session_state["preprocessed_text"] = preprocess_text(raw_text)
+        try:
+            # Extract and preprocess text
+            with st.spinner("🔍 Extracting text... Please wait."):
+                raw_text = extract_text(uploaded_file, file_extension)  # Dynamically extract text
+                preprocessed_text = preprocess_text(raw_text)  # Apply preprocessing
+                st.session_state["preprocessed_text"] = preprocessed_text
+        except ValueError as e:
+            st.error(f"Error: {e}")
+        except Exception as e:
+            st.error("Something went wrong while processing the file.")
+
+
 
     # Toggleable Extracted Text Section
-    with st.expander("📜 View Extracted Text"):
-        st.write(st.session_state["preprocessed_text"])
+    if st.session_state["preprocessed_text"]:
+        with st.expander("📜 View Extracted Text"):
+            st.write(st.session_state["preprocessed_text"])
+
 
     # Sentiment Analysis Section
     if st.session_state["sentiment"] is None:
         with st.spinner("🧠 Analyzing sentiment... Hang tight!"):
-            polarity, tone = analyze_sentiment(st.session_state["preprocessed_text"])
-            st.session_state["sentiment"] = (polarity, tone)
+            try:
+                if st.session_state["preprocessed_text"]:
+                    polarity, tone = analyze_sentiment(st.session_state["preprocessed_text"])
+                    st.session_state["sentiment"] = (polarity, tone)
+                else:
+                    raise ValueError("No valid text found to analyze.")
+            except Exception as e:
+                st.error(f"Sentiment analysis failed: {e}")
+                st.session_state["sentiment"] = None
+
+
 
     st.subheader("🔍 Sentiment Analysis and Tone Detection")
-    polarity, tone = st.session_state["sentiment"]
-    st.write(f"**Tone:** {tone}")
+    if st.session_state["sentiment"] is not None:
+        polarity, tone = st.session_state["sentiment"]
+        st.write(f"**Tone:** {tone}")
 
-    # Display Sentiment Gauge
-    fig = create_gauge(polarity, tone)
-    st.plotly_chart(fig, use_container_width=True)
+    # Display Sentiment Gauge with unique key
+        fig = create_gauge(polarity, tone)
+        st.plotly_chart(fig, use_container_width=True, key="sentiment_gauge")
+    else:
+        st.error("Sentiment analysis failed or not completed.")
+
+
 
     # Summarization Section
     if st.session_state["summary"] is None:
@@ -191,13 +264,20 @@ if st.session_state["preprocessed_text"]:
     if question:
         st.session_state["current_question"] = question
         with st.spinner("🤔 Thinking..."):
-            st.session_state["current_answer"] = answer_question_with_cohere(
-                st.session_state["preprocessed_text"], question
-            )
-            # Save to history automatically
+            # Generate the raw answer
+            raw_answer = answer_question_with_cohere(st.session_state["preprocessed_text"], question)
+        
+            # Filter sensitive information from the answer
+            filtered_answer = filter_sensitive_responses(raw_answer)
+        
+            # Save the filtered answer
+            st.session_state["current_answer"] = filtered_answer
+        
+            # Save the question and filtered answer to history
             st.session_state["qa_history"].append(
                 (st.session_state["current_question"], st.session_state["current_answer"])
             )
+
 
     # Display Current Question and Answer
     if st.session_state["current_question"] and st.session_state["current_answer"]:
