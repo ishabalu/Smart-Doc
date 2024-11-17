@@ -37,7 +37,7 @@ def extract_text(file, file_extension):
     if file_extension not in extractors:
         raise ValueError(f"Unsupported file type: {file_extension}")
 
-    # Call the appropriate extraction function
+    
     return extractors[file_extension](file)
 
 # Helper Functions
@@ -94,16 +94,16 @@ def create_gauge(polarity, tone):
         title={'text': f"Tone: {tone}"}
     ))
 
-    # Adjust layout for a smaller size
+    
     fig.update_layout(
-        width=280,  # Set the width of the figure
-        height=280,  # Set the height of the figure
-        margin=dict(t=10, b=10, l=10, r=10)  # Reduce margins for compactness
+        width=280,  
+        height=280,  
+        margin=dict(t=10, b=10, l=10, r=10)  
     )
 
     return fig
 
-# Custom Styles
+
 st.markdown(
     """
     <style>
@@ -157,10 +157,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Title Section
-st.markdown('<div class="title">Smart Document Summarizer and Q&A System</div>', unsafe_allow_html=True)
 
-# Steps to Use Section
+st.markdown('<div class="title">SmartQuest: Document Insights & Q&A</div>', unsafe_allow_html=True)
+
+
 st.markdown(
     """
     <div class="steps">
@@ -173,14 +173,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# File Upload Section
+
 uploaded_file = st.file_uploader(
     label="",
     type=["pdf", "txt", "docx", "xls", "xlsx"],
     label_visibility="visible"
 )
 
-# Initialize Session State
+
 if "preprocessed_text" not in st.session_state:
     st.session_state["preprocessed_text"] = None
 
@@ -200,14 +200,14 @@ if "current_answer" not in st.session_state:
     st.session_state["current_answer"] = None
 
 if uploaded_file is not None:
-    file_extension = uploaded_file.name.split('.')[-1].lower()  # Get the file extension
+    file_extension = uploaded_file.name.split('.')[-1].lower()  #
     st.info(f"**Uploaded File:** {uploaded_file.name} ({uploaded_file.size} bytes)")
 
     if st.session_state["preprocessed_text"] is None:
         try:
             # Extract and preprocess text
             with st.spinner("🔍 Extracting text... Please wait."):
-                raw_text = extract_text(uploaded_file, file_extension)  # Dynamically extract text
+                raw_text = extract_text(uploaded_file, file_extension)  
                 preprocessed_text = preprocess_text(raw_text)  # Apply preprocessing
                 st.session_state["preprocessed_text"] = preprocessed_text
         except ValueError as e:
@@ -217,13 +217,13 @@ if uploaded_file is not None:
 
 
 
-    # Toggleable Extracted Text Section
+    
     if st.session_state["preprocessed_text"]:
         with st.expander("📜 View Extracted Text"):
             st.write(st.session_state["preprocessed_text"])
 
 
-    # Sentiment Analysis Section
+    
     if st.session_state["sentiment"] is None:
         with st.spinner("🧠 Analyzing sentiment... Hang tight!"):
             try:
@@ -243,7 +243,7 @@ if uploaded_file is not None:
         polarity, tone = st.session_state["sentiment"]
         st.write(f"**Tone:** {tone}")
 
-    # Display Sentiment Gauge with unique key
+    
         fig = create_gauge(polarity, tone)
         st.plotly_chart(fig, use_container_width=True, key="sentiment_gauge")
     else:
@@ -267,22 +267,22 @@ if st.session_state["preprocessed_text"]:
     if question:
         st.session_state["current_question"] = question
         with st.spinner("🤔 Thinking..."):
-            # Generate the raw answer
+            
             raw_answer = answer_question_with_cohere(st.session_state["preprocessed_text"], question)
         
-            # Filter sensitive information from the answer
+           
             filtered_answer = filter_sensitive_responses(raw_answer)
         
-            # Save the filtered answer
+            
             st.session_state["current_answer"] = filtered_answer
         
-            # Save the question and filtered answer to history
+            
             st.session_state["qa_history"].append(
                 (st.session_state["current_question"], st.session_state["current_answer"])
             )
 
 
-    # Display Current Question and Answer
+    
     if st.session_state["current_question"] and st.session_state["current_answer"]:
         st.markdown(f"<strong>Q:</strong> {st.session_state['current_question']}", unsafe_allow_html=True)
         st.markdown(f"<strong>A:</strong> {st.session_state['current_answer']}", unsafe_allow_html=True)
@@ -302,5 +302,5 @@ if st.session_state["preprocessed_text"]:
         st.session_state["current_question"] = None
         st.session_state["current_answer"] = None
 
-# Footer Section
+
 st.markdown('<div class="footer">🚀 Built with ❤️ by Team Supernova</div>', unsafe_allow_html=True)

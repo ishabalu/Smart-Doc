@@ -2,10 +2,10 @@ import cohere
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # Load the variables from the .env file
+load_dotenv()  
 api_key = os.getenv("API_SECRET_KEY")
 # Initialize the Cohere client
-co = cohere.Client(api_key)  # Replace with your actual API key
+co = cohere.Client(api_key)  
 
 def answer_question_with_cohere(context, question, max_tokens=100):
     """

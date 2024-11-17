@@ -14,7 +14,7 @@ def extract_text_from_pdf(file):
 
 def extract_text_from_txt(file):
     """Extract text from a TXT file."""
-    return file.read().decode('utf-8')  # Decode the uploaded binary file to a string
+    return file.read().decode('utf-8')  
 
 def extract_text_from_docx(file):
     """Extract text from a DOCX file."""
@@ -26,14 +26,12 @@ def extract_text_from_docx(file):
 def extract_text_from_excel(file):
     """Extract and format data from an Excel file."""
     try:
-        # Load and preprocess the data
+        
         df = pd.read_excel(file)
         
-        # Drop rows with all missing values and duplicates
         df = df.dropna(how='all').drop_duplicates()
 
-        # Convert numeric columns dynamically
-        df = df.apply(pd.to_numeric, errors='ignore')  # Convert numeric where possible
+        df = df.apply(pd.to_numeric, errors='ignore')  
 
         # Format the data into the desired row-column structure
         formatted_text = ""
@@ -41,7 +39,7 @@ def extract_text_from_excel(file):
             formatted_text += f"Row {i + 1}:\n"
             for col in df.columns:
                 formatted_text += f"{col}: {row[col]}\n"
-            formatted_text += "\n"  # Add spacing between rows
+            formatted_text += "\n"  
 
         return formatted_text.strip()
     except Exception as e:
