@@ -1,6 +1,8 @@
 import fitz  # PyMuPDF
 import os
 from docx import Document
+import pandas as pd 
+
 
 def extract_text_from_pdf(file):
     """Extract text from a PDF file."""
@@ -21,6 +23,23 @@ def extract_text_from_docx(file):
     paragraphs = [para.text.strip() for para in doc.paragraphs if para.text.strip()]
     return "\n".join(paragraphs)
 
+def extract_text_from_excel(file):
+    """Extract text from an Excel file."""
+    try:
+        # Load the Excel file into a DataFrame
+        df = pd.read_excel(file)
+
+        # Convert the DataFrame to a single string
+        text = ""
+        for col in df.columns:
+            text += f"Column: {col}\n"  # Include column headers
+            text += "\n".join(df[col].dropna().astype(str))  # Include all non-NaN values in the column
+            text += "\n\n"  # Add spacing between columns
+
+        return text.strip()  # Return the combined text
+    except Exception as e:
+        raise ValueError(f"Failed to extract text from the Excel file. Error: {e}")
+
 def extract_text(file, file_type):
     """Extract text based on file type."""
     if file_type == "pdf":
@@ -29,6 +48,8 @@ def extract_text(file, file_type):
         text = extract_text_from_txt(file)
     elif file_type == "docx":
         text = extract_text_from_docx(file)
+    elif file_type in ["xls", "xlsx"]: 
+        text = extract_text_from_excel(file)
     else:
         raise ValueError("Unsupported file type")
     

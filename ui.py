@@ -4,7 +4,7 @@ from text_summarization import summarize_long_text_cohere
 from qa_system import answer_question_with_cohere
 from textblob import TextBlob
 import plotly.graph_objects as go
-from text_extraction import extract_text_from_pdf, extract_text_from_txt, extract_text_from_docx
+from text_extraction import extract_text_from_pdf, extract_text_from_txt, extract_text_from_docx, extract_text_from_excel
 
 
 def redact_sensitive_info(text):
@@ -28,7 +28,10 @@ def extract_text(file, file_extension):
     extractors = {
         "pdf": extract_text_from_pdf,
         "txt": extract_text_from_txt,
-        "docx": extract_text_from_docx
+        "docx": extract_text_from_docx,
+        "xls": extract_text_from_excel,
+        "xlsx": extract_text_from_excel
+
     }
 
     if file_extension not in extractors:
@@ -173,7 +176,7 @@ st.markdown(
 # File Upload Section
 uploaded_file = st.file_uploader(
     label="",
-    type=["pdf", "txt", "docx"],
+    type=["pdf", "txt", "docx", "xls", "xlsx"],
     label_visibility="visible"
 )
 
